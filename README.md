@@ -79,14 +79,46 @@ css/style.css   dark editor UI
 js/app.js       audio decoding, peak extraction, canvas rendering, PNG export
 ```
 
-## Notes on Spotify
+## Spotify metadata autofill (optional)
 
-Spotify's Web API does **not** expose a track's raw audio or PCM, so it can't
-produce a true waveform. The one endpoint that came close (`audio-analysis`,
-per-segment loudness) was deprecated in November 2024 for newly-created apps.
-Spotify is still useful for **metadata** (title, album, year, duration) via the
-standard `/tracks` endpoint — that could be wired into the Text panel later as
-an optional autofill, but the waveform itself needs the actual audio file.
+The **Spotify autofill** panel fills the **Title, Album, Year and Length**
+fields from a track link. The waveform still comes from your audio file —
+Spotify does not expose raw audio/PCM, so it can't produce a waveform.
+
+It uses the **Authorization Code + PKCE** flow, so the app stays purely
+front-end (no client secret). It requests **no scopes** — it only reads the
+public catalog `/tracks` endpoint.
+
+### One-time setup
+
+1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+   and **Create app** (any name). Copy its **Client ID**.
+2. **Serve the app over http** and open it via the loopback IP, e.g.:
+   ```bash
+   python3 -m http.server 8000
+   # then open  http://127.0.0.1:8000   (use 127.0.0.1, NOT localhost)
+   ```
+   Spotify rejects `localhost` as a redirect target; the loopback IP works.
+3. In the app's Spotify panel, copy the **Redirect URI** it shows
+   (e.g. `http://127.0.0.1:8000/`) and add it under **Redirect URIs** in your
+   Spotify app settings → **Save**.
+4. Paste your **Client ID** into the panel, click **Connect Spotify**, and
+   authorize. (A new app is in *development mode*, so only Spotify accounts you
+   add under *Users and Access* — including your own — can log in.)
+
+### Use it
+
+Paste a track link (`https://open.spotify.com/track/…`) and click
+**Autofill from track**.
+
+### Limitations
+
+- **Needs http(s) hosting** — the OAuth redirect can't return to a `file://`
+  page, so autofill is unavailable in the double-click `dist/amplitude.html`
+  bundle. Use the served version for Spotify.
+- **BPM and time signature can't be filled.** They only ever came from the
+  `audio-features` endpoint, which Spotify deprecated for new apps in November
+  2024. Those two fields stay manual.
 
 ## Fonts
 

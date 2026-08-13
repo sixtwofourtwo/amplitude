@@ -152,6 +152,23 @@ input[type="color"] {
 .dz-status { font-size: 11.5px; color: var(--accent); margin-top: 8px; min-height: 0; }
 .dz-status.error { color: #ff6b6b; }
 
+/* ---------- Spotify panel ---------- */
+.note { font-size: 11.5px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+.note.small { margin-bottom: 6px; }
+.note a { color: var(--accent); text-decoration: none; }
+.field > span a { color: var(--accent); text-decoration: none; font-weight: 400; margin-left: 4px; }
+code.redirect {
+  display: block; font-size: 11px; color: var(--text);
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 7px 9px; margin-bottom: 12px; word-break: break-all; user-select: all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.btn.small { padding: 7px 12px; font-size: 12px; }
+.conn-state { font-size: 11.5px; color: var(--muted); align-self: center; }
+.conn-state.ok { color: var(--accent); }
+.conn-state.err { color: #ff6b6b; }
+#spotifyPanel.disabled { opacity: .75; }
+
 /* ---------- Stage ---------- */
 .canvas-wrap {
   max-width: 100%;

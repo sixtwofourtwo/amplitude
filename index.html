@@ -81,6 +81,32 @@
         </label>
       </section>
 
+      <!-- Spotify -->
+      <section class="panel" id="spotifyPanel">
+        <h2>Spotify autofill · optional</h2>
+        <p class="note" id="spotifyIntro">
+          Fills Title, Album, Year and Length from a track link. Needs a free
+          Client ID and the app served over http(s). BPM &amp; time signature
+          aren’t available from Spotify and stay manual.
+        </p>
+        <label class="field wide">
+          <span>Client ID <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">get one ↗</a></span>
+          <input type="text" id="spotifyClientId" placeholder="paste your Spotify app Client ID" autocomplete="off" spellcheck="false" />
+        </label>
+        <p class="note small">Register this exact <b>Redirect URI</b> in your Spotify app settings (open the app via <b>127.0.0.1</b>, not <code>localhost</code> — Spotify rejects <code>localhost</code>):</p>
+        <code class="redirect" id="spotifyRedirect">—</code>
+        <div class="row">
+          <button id="spotifyConnect" class="btn ghost small" type="button">Connect Spotify</button>
+          <span class="conn-state" id="spotifyConn">not connected</span>
+        </div>
+        <label class="field wide">
+          <span>Track link</span>
+          <input type="text" id="spotifyTrackUrl" placeholder="https://open.spotify.com/track/…" autocomplete="off" spellcheck="false" />
+        </label>
+        <button id="spotifyFetch" class="btn ghost small" type="button" disabled>Autofill from track</button>
+        <div class="dz-status" id="spotifyStatus"></div>
+      </section>
+
       <!-- Style -->
       <section class="panel">
         <h2>3 · Style</h2>
@@ -135,5 +161,6 @@
   </main>
 
   <script src="js/app.js"></script>
+  <script src="js/spotify.js"></script>
 </body>
 </html>

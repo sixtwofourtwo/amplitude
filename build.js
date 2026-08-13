@@ -18,7 +18,8 @@ const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 
 const html = read("index.html");
 const css = read("css/style.css");
-const js = read("js/app.js");
+// Scripts inlined in load order.
+const scripts = ["js/app.js", "js/spotify.js"];
 
 // Embed the font as a data URI.
 const fontB64 = fs
@@ -49,11 +50,11 @@ out = out.replace(
   `\n  <style>${fontFace}\n${css}\n  </style>`
 );
 
-// Replace the external script with an inline <script>.
-out = out.replace(
-  /\s*<script src="js\/app\.js"><\/script>/,
-  `\n  <script>\n${js}\n  </script>`
-);
+// Replace each external script with an inline <script>, preserving order.
+for (const src of scripts) {
+  const tag = new RegExp(`\\s*<script src="${src.replace(/[/.]/g, "\\$&")}"><\\/script>`);
+  out = out.replace(tag, `\n  <script>\n${read(src)}\n  </script>`);
+}
 
 const outDir = path.join(root, "dist");
 fs.mkdirSync(outDir, { recursive: true });
