@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amplitude — Waveform Art Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">〰</span>
+      <h1>Amplitude</h1>
+      <span class="brand-sub">Waveform Art Generator</span>
+    </div>
+    <div class="header-actions">
+      <button id="randomizeBtn" class="btn ghost" title="Load demo content">Demo</button>
+      <button id="downloadBtn" class="btn primary" disabled>Download PNG</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ============ CONTROLS ============ -->
+    <aside class="controls" id="controls">
+      <!-- Audio -->
+      <section class="panel">
+        <h2>1 · Audio</h2>
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept="audio/*" hidden />
+          <div class="dz-inner">
+            <div class="dz-icon">♪</div>
+            <div class="dz-text"><strong>Drop an audio file</strong><span>or click to browse — MP3, WAV, FLAC, M4A…</span></div>
+          </div>
+          <div class="dz-status" id="dzStatus"></div>
+        </label>
+        <div class="row">
+          <label class="field">
+            <span>Bars</span>
+            <input type="range" id="barCount" min="60" max="500" step="1" value="255" />
+            <output id="barCountVal">255</output>
+          </label>
+        </div>
+        <div class="row">
+          <label class="field">
+            <span>Amplitude</span>
+            <input type="range" id="gain" min="0.4" max="3" step="0.05" value="1" />
+            <output id="gainVal">1.0×</output>
+          </label>
+          <label class="field">
+            <span>Bar width</span>
+            <input type="range" id="barWidth" min="0.15" max="1" step="0.05" value="0.55" />
+            <output id="barWidthVal">0.55</output>
+          </label>
+        </div>
+        <div class="row">
+          <label class="checkbox"><input type="checkbox" id="roundCaps" /> Rounded bar caps</label>
+          <label class="checkbox"><input type="checkbox" id="mirror" checked /> Symmetric (mirror)</label>
+        </div>
+      </section>
+
+      <!-- Text -->
+      <section class="panel">
+        <h2>2 · Text</h2>
+        <label class="field wide">
+          <span>Title</span>
+          <input type="text" id="title" placeholder="ARTIST - Song Title" />
+        </label>
+        <label class="field wide">
+          <span>Description (bottom-left)</span>
+          <textarea id="description" rows="4" placeholder="A short paragraph about the track…"></textarea>
+        </label>
+        <label class="field wide">
+          <span>Metadata (bottom-right, one item per line)</span>
+          <textarea id="metadata" rows="6" placeholder="4:15 length&#10;92 BPM&#10;4/4 signature&#10;Album Name (album)&#10;1980 released&#10;Atlantic (label)"></textarea>
+        </label>
+      </section>
+
+      <!-- Style -->
+      <section class="panel">
+        <h2>3 · Style</h2>
+        <div class="row">
+          <label class="field">
+            <span>Wave color</span>
+            <input type="color" id="waveColor" value="#111111" />
+          </label>
+          <label class="field">
+            <span>Background</span>
+            <input type="color" id="bgColor" value="#f2f2f0" />
+          </label>
+          <label class="field">
+            <span>Text color</span>
+            <input type="color" id="textColor" value="#111111" />
+          </label>
+        </div>
+        <div class="row">
+          <label class="checkbox"><input type="checkbox" id="paperTexture" checked /> Paper texture</label>
+          <label class="checkbox"><input type="checkbox" id="frame" checked /> Black frame</label>
+        </div>
+        <div class="row">
+          <label class="field">
+            <span>Aspect</span>
+            <select id="aspect">
+              <option value="1.25" selected>5:4 (poster)</option>
+              <option value="1.3333">4:3</option>
+              <option value="1.5">3:2</option>
+              <option value="1">1:1 (square)</option>
+              <option value="0.8">4:5 (portrait)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Export width</span>
+            <select id="exportWidth">
+              <option value="2000">2000px</option>
+              <option value="3000" selected>3000px</option>
+              <option value="4000">4000px</option>
+            </select>
+          </label>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ============ PREVIEW ============ -->
+    <section class="stage">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="poster"></canvas>
+      </div>
+      <p class="hint" id="hint">Upload an audio file to generate its waveform, then tweak the text and style. Everything runs in your browser — nothing is uploaded.</p>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
