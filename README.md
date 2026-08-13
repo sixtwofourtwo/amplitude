@@ -27,22 +27,38 @@ Web Audio API and never uploaded anywhere.
 
 ## Run it
 
-No build step and no dependencies. Because browsers restrict `file://` pages,
-serve the folder over HTTP:
+### Option A — single file on your desktop (recommended)
+
+A prebuilt, fully self-contained version lives at **`dist/amplitude.html`**. It
+has the CSS, JavaScript, and serif font all embedded, so you can **just
+double-click it** — no server, no network, no install. Audio files you open are
+read locally and never uploaded.
+
+To regenerate it after changing the source:
 
 ```bash
-# any static server works — for example:
-python3 -m http.server 8000
-# then open http://localhost:8000
+node build.js        # writes dist/amplitude.html
 ```
 
-or
+### Option B — the source folder
+
+The multi-file source (`index.html` + `css/` + `js/`) also runs directly, but
+some browsers restrict `file://` pages, so serve it over HTTP:
 
 ```bash
-npx serve .
+python3 -m http.server 8000   # then open http://localhost:8000
+# or:  npx serve .
 ```
 
-Then open the printed URL, drop in a song, and hit **Download PNG**.
+Then drop in a song and hit **Download PNG**.
+
+## Title style
+
+The title renders as genuine **small caps** (toggle in the Text panel): letters
+you type in lowercase become smaller capitals, while letters typed uppercase
+stay full height. So `ACDC - Back in Black` keeps the acronym at full height and
+sets the rest as small caps — matching the printed-poster look. Turn the toggle
+off for plain all-uppercase.
 
 ## How the waveform is built
 
@@ -72,6 +88,12 @@ Spotify is still useful for **metadata** (title, album, year, duration) via the
 standard `/tracks` endpoint — that could be wired into the Text panel later as
 an optional autofill, but the waveform itself needs the actual audio file.
 
+## Fonts
+
+The embedded title font is **Playfair Display** by Claus Eggers Sørensen,
+distributed under the [SIL Open Font License 1.1](https://openfontlicense.org/).
+Only the 700-weight Latin subset (~23 KB) is bundled, for offline use.
+
 ## License
 
-MIT — do what you like.
+App code: MIT — do what you like. The bundled font retains its own OFL license.

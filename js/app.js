@@ -31,7 +31,7 @@
     barCount: $("barCount"), barCountVal: $("barCountVal"),
     gain: $("gain"), gainVal: $("gainVal"),
     barWidth: $("barWidth"), barWidthVal: $("barWidthVal"),
-    roundCaps: $("roundCaps"), mirror: $("mirror"),
+    roundCaps: $("roundCaps"), mirror: $("mirror"), smallCaps: $("smallCaps"),
     title: $("title"), description: $("description"), metadata: $("metadata"),
     waveColor: $("waveColor"), bgColor: $("bgColor"), textColor: $("textColor"),
     paperTexture: $("paperTexture"), frame: $("frame"),
@@ -134,13 +134,9 @@
     // Title
     const title = els.title.value.trim();
     if (title) {
-      const upper = title.toUpperCase();
       c.fillStyle = ink;
-      c.textAlign = "center";
       c.textBaseline = "alphabetic";
-      const size = fitText(c, upper, W - M * 2, Math.round(H * 0.085), "700", "Playfair Display");
-      c.font = `700 ${size}px "Playfair Display", Georgia, serif`;
-      c.fillText(upper, W / 2, Math.round(H * 0.14));
+      drawTitle(c, title, W / 2, Math.round(H * 0.14), W - M * 2, Math.round(H * 0.085));
     }
 
     drawWaveform(c, W, H, wave);
@@ -257,6 +253,58 @@
   // ======================================================================
   //  Text helpers
   // ======================================================================
+  /**
+   * Draw the poster title. In small-caps mode (default) each character is drawn
+   * as a capital: letters that were typed lowercase render as smaller capitals,
+   * while already-uppercase letters and non-letters stay at full cap height —
+   * genuine small-caps, e.g. "Back in Black" → B‑ACK ‑IN‑ B‑LACK, and an
+   * acronym like "ACDC" stays full height. Falls back to plain uppercase when
+   * the small-caps toggle is off.
+   */
+  function drawTitle(c, text, cx, baseline, maxWidth, startSize) {
+    const family = `"Playfair Display", Georgia, serif`;
+    const weight = "700";
+
+    if (!els.smallCaps.checked) {
+      const upper = text.toUpperCase();
+      const size = fitText(c, upper, maxWidth, startSize, weight, "Playfair Display");
+      c.font = `${weight} ${size}px ${family}`;
+      c.textAlign = "center";
+      c.fillText(upper, cx, baseline);
+      return;
+    }
+
+    // Build small-caps runs: each glyph is a capital, flagged small if the
+    // source character was lowercase.
+    const runs = Array.from(text).map((ch) => {
+      const isLower = ch.toLowerCase() === ch && ch.toUpperCase() !== ch;
+      return { glyph: ch.toUpperCase(), small: isLower };
+    });
+    const SMALL = 0.74; // small-cap height relative to full caps
+
+    const widthAt = (full) => {
+      let w = 0;
+      for (const r of runs) {
+        c.font = `${weight} ${(r.small ? full * SMALL : full)}px ${family}`;
+        w += c.measureText(r.glyph).width;
+      }
+      return w;
+    };
+
+    // Shrink until the composed line fits the available width.
+    let size = startSize;
+    while (size > 8 && widthAt(size) > maxWidth) size -= 2;
+
+    c.textAlign = "left";
+    let x = cx - widthAt(size) / 2;
+    for (const r of runs) {
+      const s = r.small ? size * SMALL : size;
+      c.font = `${weight} ${s}px ${family}`;
+      c.fillText(r.glyph, x, baseline);      // shared alphabetic baseline
+      x += c.measureText(r.glyph).width;
+    }
+  }
+
   function fitText(c, text, maxWidth, startSize, weight, family) {
     let size = startSize;
     c.font = `${weight} ${size}px "${family}", serif`;
@@ -342,7 +390,7 @@
     const rerender = () => render();
     [els.title, els.description, els.metadata, els.waveColor, els.bgColor,
      els.textColor, els.aspect].forEach(el => el.addEventListener("input", rerender));
-    [els.paperTexture, els.frame, els.roundCaps, els.mirror].forEach(el =>
+    [els.paperTexture, els.frame, els.roundCaps, els.mirror, els.smallCaps].forEach(el =>
       el.addEventListener("change", rerender));
     els.aspect.addEventListener("change", () => { textureCache = { key: "", canvas: null }; render(); });
 
