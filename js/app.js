@@ -137,7 +137,7 @@
     if (title) {
       c.fillStyle = ink;
       c.textBaseline = "alphabetic";
-      drawTitle(c, title, W / 2, Math.round(H * 0.14), W - M * 2, Math.round(H * 0.085));
+      drawTitle(c, title, W / 2, Math.round(H * 0.135), W - M * 2, Math.round(H * 0.062));
     }
 
     drawWaveform(c, W, H, wave);
