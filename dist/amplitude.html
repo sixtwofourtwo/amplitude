@@ -216,6 +216,7 @@ code.redirect {
     </div>
     <div class="header-actions">
       <button id="randomizeBtn" class="btn ghost" title="Load demo content">Demo</button>
+      <button id="downloadSvgBtn" class="btn ghost" disabled title="Resolution-independent vector for large prints">Download SVG</button>
       <button id="downloadBtn" class="btn primary" disabled>Download PNG</button>
     </div>
   </header>
@@ -387,7 +388,7 @@ code.redirect {
 
   const els = {
     fileInput: $("fileInput"), dropzone: $("dropzone"), dzStatus: $("dzStatus"),
-    downloadBtn: $("downloadBtn"), randomizeBtn: $("randomizeBtn"),
+    downloadBtn: $("downloadBtn"), downloadSvgBtn: $("downloadSvgBtn"), randomizeBtn: $("randomizeBtn"),
     barCount: $("barCount"), barCountVal: $("barCountVal"),
     gain: $("gain"), gainVal: $("gainVal"),
     barWidth: $("barWidth"), barWidthVal: $("barWidthVal"),
@@ -422,6 +423,7 @@ code.redirect {
 
       setStatus(`Loaded · ${formatTime(audioBuf.duration)} · ${audioBuf.numberOfChannels}ch · ${(audioBuf.sampleRate / 1000).toFixed(1)}kHz`, false);
       els.downloadBtn.disabled = false;
+      els.downloadSvgBtn.disabled = false;
       els.hint.style.display = "none";
       render();
     } catch (err) {
@@ -621,47 +623,60 @@ code.redirect {
    * acronym like "ACDC" stays full height. Falls back to plain uppercase when
    * the small-caps toggle is off.
    */
-  function drawTitle(c, text, cx, baseline, maxWidth, startSize) {
-    const family = `"Playfair Display", Georgia, serif`;
-    const weight = "700";
+  const TITLE_FAMILY = `"Playfair Display", Georgia, serif`;
+  const TITLE_WEIGHT = "700";
+  const SMALL_CAP = 0.74; // small-cap height relative to full caps
 
+  /**
+   * Compute the title layout once so the canvas and SVG exporters render it
+   * identically. Returns either an uppercase layout or a per-glyph small-caps
+   * layout. `c` is any 2D context used only for text measurement.
+   */
+  function computeTitleLayout(c, text, cx, baseline, maxWidth, startSize) {
     if (!els.smallCaps.checked) {
       const upper = text.toUpperCase();
-      const size = fitText(c, upper, maxWidth, startSize, weight, "Playfair Display");
-      c.font = `${weight} ${size}px ${family}`;
-      c.textAlign = "center";
-      c.fillText(upper, cx, baseline);
-      return;
+      const size = fitText(c, upper, maxWidth, startSize, TITLE_WEIGHT, "Playfair Display");
+      return { smallCaps: false, text: upper, size, cx, baseline };
     }
 
-    // Build small-caps runs: each glyph is a capital, flagged small if the
-    // source character was lowercase.
     const runs = Array.from(text).map((ch) => {
       const isLower = ch.toLowerCase() === ch && ch.toUpperCase() !== ch;
       return { glyph: ch.toUpperCase(), small: isLower };
     });
-    const SMALL = 0.74; // small-cap height relative to full caps
-
     const widthAt = (full) => {
       let w = 0;
       for (const r of runs) {
-        c.font = `${weight} ${(r.small ? full * SMALL : full)}px ${family}`;
+        c.font = `${TITLE_WEIGHT} ${(r.small ? full * SMALL_CAP : full)}px ${TITLE_FAMILY}`;
         w += c.measureText(r.glyph).width;
       }
       return w;
     };
-
-    // Shrink until the composed line fits the available width.
     let size = startSize;
     while (size > 8 && widthAt(size) > maxWidth) size -= 2;
 
-    c.textAlign = "left";
-    let x = cx - widthAt(size) / 2;
+    const glyphs = [];
+    let x = cx - widthAt(size) / 2;             // absolute x of each glyph
     for (const r of runs) {
-      const s = r.small ? size * SMALL : size;
-      c.font = `${weight} ${s}px ${family}`;
-      c.fillText(r.glyph, x, baseline);      // shared alphabetic baseline
+      const s = r.small ? size * SMALL_CAP : size;
+      c.font = `${TITLE_WEIGHT} ${s}px ${TITLE_FAMILY}`;
+      glyphs.push({ glyph: r.glyph, size: s, x });
       x += c.measureText(r.glyph).width;
+    }
+    return { smallCaps: true, glyphs, baseline };
+  }
+
+  function drawTitle(c, text, cx, baseline, maxWidth, startSize) {
+    const L = computeTitleLayout(c, text, cx, baseline, maxWidth, startSize);
+    if (!L.smallCaps) {
+      c.font = `${TITLE_WEIGHT} ${L.size}px ${TITLE_FAMILY}`;
+      c.textAlign = "center";
+      c.fillText(L.text, L.cx, L.baseline);
+      return;
+    }
+    c.textAlign = "left";
+    for (const g of L.glyphs) {
+      c.font = `${TITLE_WEIGHT} ${g.size}px ${TITLE_FAMILY}`;
+      c.fillText(g.glyph, g.x, L.baseline);
     }
   }
 
@@ -711,13 +726,187 @@ code.redirect {
     textureCache = { key: "", canvas: null };  // invalidate (size differed)
     render();                     // restore preview at its own size
 
-    off.toBlob((blob) => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = (els.title.value.trim() || "waveform").replace(/[^\w\-]+/g, "_") + ".png";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    }, "image/png");
+    off.toBlob((blob) => saveBlob(blob, "png"), "image/png");
+  }
+
+  // ======================================================================
+  //  SVG / vector export — a true resolution-independent copy of the poster,
+  //  built from the same layout math as the canvas renderer.
+  // ======================================================================
+  const xmlEscape = (s) => String(s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  async function downloadSVG() {
+    // Coordinate space matches the preview (W=1600); vectors scale freely.
+    const W = 1600;
+    const H = Math.round(W / parseFloat(els.aspect.value));
+    const fontUri = await getFontDataUri();      // embed for a portable file
+    const svg = buildSVG(W, H, fontUri);
+    saveBlob(new Blob([svg], { type: "image/svg+xml" }), "svg");
+  }
+
+  function buildSVG(W, H, fontUri) {
+    const c = previewCtx;                        // used only for measurement
+    const bg = els.bgColor.value;
+    const wave = els.waveColor.value;
+    const ink = els.textColor.value;
+    const parts = [];
+
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`);
+
+    // Embedded font (falls back to Georgia/serif if unavailable).
+    const face = fontUri
+      ? `@font-face{font-family:'Playfair Display';font-weight:700;font-style:normal;src:url(${fontUri}) format('woff2');}`
+      : "";
+    parts.push(`<defs><style>${face}</style>` + texturePaperDef() + `</defs>`);
+
+    // Background
+    parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${xmlEscape(bg)}"/>`);
+    if (els.paperTexture.checked) {
+      parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#808080" filter="url(#paper)" opacity="0.06"/>`);
+    }
+
+    // Title
+    const title = els.title.value.trim();
+    if (title) {
+      const M = Math.round(W * 0.05);
+      const L = computeTitleLayout(c, title, W / 2, Math.round(H * 0.14), W - M * 2, Math.round(H * 0.085));
+      if (!L.smallCaps) {
+        parts.push(`<text x="${L.cx}" y="${L.baseline}" text-anchor="middle" font-family="${TITLE_FAMILY_ATTR}" font-weight="700" font-size="${L.size}" fill="${xmlEscape(ink)}">${xmlEscape(L.text)}</text>`);
+      } else {
+        const spans = L.glyphs.map((g) =>
+          `<tspan x="${round2(g.x)}" font-size="${round2(g.size)}">${xmlEscape(g.glyph)}</tspan>`).join("");
+        parts.push(`<text y="${L.baseline}" text-anchor="start" font-family="${TITLE_FAMILY_ATTR}" font-weight="700" fill="${xmlEscape(ink)}">${spans}</text>`);
+      }
+    }
+
+    parts.push(svgWaveform(W, H, wave));
+    parts.push(svgDescription(c, W, H, ink));
+    parts.push(svgMetadata(W, H, ink));
+    if (els.frame.checked) parts.push(svgFrame(W, H));
+
+    parts.push(`</svg>`);
+    return parts.join("\n");
+  }
+
+  const TITLE_FAMILY_ATTR = "&apos;Playfair Display&apos;, Georgia, serif";
+  const INTER_ATTR = "&apos;Inter&apos;, system-ui, sans-serif";
+  const round2 = (n) => Math.round(n * 100) / 100;
+
+  function texturePaperDef() {
+    // Vector-native paper grain via turbulence (renders in browsers/Illustrator).
+    return `<filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>`;
+  }
+
+  function svgWaveform(W, H, color) {
+    if (!state.peaks) return "";
+    const { min, max, bars } = state.peaks;
+    const M = Math.round(W * 0.055);
+    const areaW = W - M * 2;
+    const centerY = H * 0.5;
+    const maxAmp = H * 0.30;
+    const gain = parseFloat(els.gain.value);
+    const slotW = areaW / bars;
+    const barW = Math.max(1, slotW * parseFloat(els.barWidth.value));
+    const mirror = els.mirror.checked;
+    const rx = els.roundCaps.checked ? Math.min(barW / 2, 999) : 0;
+
+    let rects = "";
+    for (let b = 0; b < bars; b++) {
+      const x = M + b * slotW + (slotW - barW) / 2;
+      let up, down;
+      if (mirror) { const amp = Math.max(Math.abs(min[b]), max[b]) * gain; up = down = amp * maxAmp; }
+      else { up = max[b] * gain * maxAmp; down = -min[b] * gain * maxAmp; }
+      const topY = centerY - up;
+      const h = Math.max((centerY + down) - topY, 1);
+      const r = rx ? ` rx="${round2(Math.min(rx, h / 2))}"` : "";
+      rects += `<rect x="${round2(x)}" y="${round2(topY)}" width="${round2(barW)}" height="${round2(h)}"${r}/>`;
+    }
+    const lw = Math.max(1, W * 0.0006);
+    return `<g fill="${xmlEscape(color)}">${rects}</g>` +
+      `<line x1="${M}" y1="${centerY}" x2="${W - M}" y2="${centerY}" stroke="${xmlEscape(color)}" stroke-width="${round2(lw)}"/>`;
+  }
+
+  function svgDescription(c, W, H, color) {
+    const text = els.description.value.trim();
+    if (!text) return "";
+    const size = Math.round(H * 0.017);
+    c.font = `400 ${size}px "Inter", system-ui, sans-serif`;
+    const lines = wrapText(c, text, W * 0.32);
+    const lineH = size * 1.4;
+    const x = Math.round(W * 0.05);
+    let y = H - Math.round(H * 0.055) - lines.length * lineH;
+    // Canvas uses textBaseline "top"; approximate with a baseline nudge.
+    const spans = lines.map((ln) => {
+      const ty = round2(y + size * 0.82); y += lineH;
+      return `<tspan x="${x}" y="${ty}">${xmlEscape(ln)}</tspan>`;
+    }).join("");
+    return `<text font-family="${INTER_ATTR}" font-weight="400" font-size="${size}" fill="${xmlEscape(color)}">${spans}</text>`;
+  }
+
+  function svgMetadata(W, H, color) {
+    const raw = els.metadata.value.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (!raw.length) return "";
+    const size = Math.round(H * 0.018);
+    const lineH = size * 1.55;
+    const rightX = W - Math.round(W * 0.05);
+    let y = H - Math.round(H * 0.055) - raw.length * lineH;
+    const spans = raw.map((ln) => {
+      const ty = round2(y + size * 0.82); y += lineH;
+      return `<tspan x="${rightX}" y="${ty}">${xmlEscape(ln)}</tspan>`;
+    }).join("");
+    return `<text text-anchor="end" font-family="${INTER_ATTR}" font-weight="500" font-size="${size}" fill="${xmlEscape(color)}">${spans}</text>`;
+  }
+
+  function svgFrame(W, H) {
+    const t = Math.round(W * 0.018);
+    return `<g fill="#0a0a0a">` +
+      `<rect x="0" y="0" width="${W}" height="${t}"/>` +
+      `<rect x="0" y="${H - t}" width="${W}" height="${t}"/>` +
+      `<rect x="0" y="0" width="${t}" height="${H}"/>` +
+      `<rect x="${W - t}" y="0" width="${t}" height="${H}"/></g>` +
+      `<rect x="${t + 0.5}" y="${t + 0.5}" width="${W - t * 2 - 1}" height="${H - t * 2 - 1}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+  }
+
+  // Obtain the title font as a data: URI so the SVG is self-contained.
+  // Order: an already-embedded @font-face (single-file bundle) → the local
+  // asset (served version) → null (SVG falls back to system serif).
+  let _fontUri = undefined;
+  async function getFontDataUri() {
+    if (_fontUri !== undefined) return _fontUri;
+    // 1) Look for an inline @font-face data URI already in the document.
+    try {
+      for (const sheet of document.styleSheets) {
+        let rules; try { rules = sheet.cssRules; } catch (_) { continue; }
+        for (const rule of rules) {
+          if (rule.cssText && /Playfair Display/i.test(rule.cssText)) {
+            // Browsers may re-serialize the src as url("data:...") with quotes.
+            const m = rule.cssText.match(/url\(\s*["']?(data:font[^)"']+)["']?\s*\)/);
+            if (m) return (_fontUri = m[1]);
+          }
+        }
+      }
+    } catch (_) {}
+    // 2) Fetch the local asset and encode it.
+    try {
+      const res = await fetch("assets/fonts/playfair-display-700-latin.woff2");
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        let bin = ""; const bytes = new Uint8Array(buf);
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return (_fontUri = "data:font/woff2;base64," + btoa(bin));
+      }
+    } catch (_) {}
+    return (_fontUri = null);
+  }
+
+  function saveBlob(blob, ext) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (els.title.value.trim() || "waveform").replace(/[^\w\-]+/g, "_") + "." + ext;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   // ======================================================================
@@ -768,6 +957,7 @@ code.redirect {
     });
 
     els.downloadBtn.addEventListener("click", download);
+    els.downloadSvgBtn.addEventListener("click", downloadSVG);
     els.randomizeBtn.addEventListener("click", loadDemo);
   }
 
@@ -790,6 +980,7 @@ code.redirect {
     if (!els.description.value) els.description.value = "Add a short description of the track here. This block wraps to the width of the lower-left column, just like the printed posters that inspired this layout.";
     if (!els.metadata.value) els.metadata.value = "4:15 length\n120 BPM\n4/4 signature\nAlbum Name (album)\n1980 released\nLabel (label)";
     els.downloadBtn.disabled = false;
+    els.downloadSvgBtn.disabled = false;
     els.hint.style.display = "none";
     setStatus("Demo waveform loaded (synthetic).", false);
     render();

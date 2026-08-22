@@ -18,8 +18,12 @@ Web Audio API and never uploaded anywhere.
 - **Style controls:** bar count, amplitude, bar width, rounded caps,
   symmetric/asymmetric waveform, colors, paper texture, black frame, and aspect
   ratio.
-- **One-click PNG export** at up to 4000px wide — rendered fresh at full
-  resolution so text and bars stay crisp for printing.
+- **PNG export** at up to 4000px wide — rendered fresh at full resolution so
+  text and bars stay crisp for printing.
+- **SVG / vector export** — a resolution-independent copy of the poster for
+  large-format printing. Bars are `<rect>`s, the title is real text, and the
+  serif font is embedded in the file, so it opens self-contained in browsers,
+  Illustrator, Inkscape, or a cutter/plotter.
 - **Demo mode** generates a synthetic waveform so you can explore the layout
   without a file.
 - Auto-fills the title from the filename and the track length from the audio
@@ -69,7 +73,10 @@ peaks are normalized so the loudest point reaches the full bar height, then
 `drawWaveform()` paints one thin bar per bucket around a center baseline.
 
 Preview and export call the **same** `render()` function with different canvas
-sizes, so the downloaded PNG always matches the on-screen poster.
+sizes, so the downloaded PNG always matches the on-screen poster. The SVG
+exporter (`buildSVG()`) reuses the identical layout math — same margins, bar
+positions, and title layout via the shared `computeTitleLayout()` — so the
+vector output lines up with the raster one.
 
 ## Project layout
 
