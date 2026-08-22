@@ -69,9 +69,14 @@
           <span>Title</span>
           <input type="text" id="title" placeholder="Artist - Song Title" />
         </label>
-        <div class="row">
-          <label class="checkbox"><input type="checkbox" id="smallCaps" checked /> Small-caps title</label>
-        </div>
+        <label class="field wide">
+          <span>Title style</span>
+          <select id="titleStyle">
+            <option value="regular" selected>Regular (as typed)</option>
+            <option value="smallcaps">Small caps</option>
+            <option value="upper">All caps</option>
+          </select>
+        </label>
         <label class="field wide">
           <span>Description (bottom-left)</span>
           <textarea id="description" rows="4" placeholder="A short paragraph about the track…"></textarea>

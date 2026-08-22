@@ -58,11 +58,13 @@ Then drop in a song and hit **Download PNG**.
 
 ## Title style
 
-The title renders as genuine **small caps** (toggle in the Text panel): letters
-you type in lowercase become smaller capitals, while letters typed uppercase
-stay full height. So `ACDC - Back in Black` keeps the acronym at full height and
-sets the rest as small caps — matching the printed-poster look. Turn the toggle
-off for plain all-uppercase.
+The **Title style** selector in the Text panel offers three looks:
+
+- **Regular (as typed)** — default; the title shows exactly as you type it,
+  e.g. `Everlong - Foo Fighters`.
+- **Small caps** — lowercase letters become smaller capitals while uppercase
+  letters stay full height (so an acronym like `ACDC` stays full height).
+- **All caps** — the whole title is uppercased.
 
 ## How the waveform is built
 

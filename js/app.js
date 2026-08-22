@@ -31,7 +31,7 @@
     barCount: $("barCount"), barCountVal: $("barCountVal"),
     gain: $("gain"), gainVal: $("gainVal"),
     barWidth: $("barWidth"), barWidthVal: $("barWidthVal"),
-    roundCaps: $("roundCaps"), mirror: $("mirror"), smallCaps: $("smallCaps"),
+    roundCaps: $("roundCaps"), mirror: $("mirror"), titleStyle: $("titleStyle"),
     title: $("title"), description: $("description"), metadata: $("metadata"),
     waveColor: $("waveColor"), bgColor: $("bgColor"), textColor: $("textColor"),
     paperTexture: $("paperTexture"), frame: $("frame"),
@@ -272,10 +272,11 @@
    * layout. `c` is any 2D context used only for text measurement.
    */
   function computeTitleLayout(c, text, cx, baseline, maxWidth, startSize) {
-    if (!els.smallCaps.checked) {
-      const upper = text.toUpperCase();
-      const size = fitText(c, upper, maxWidth, startSize, TITLE_WEIGHT, "Playfair Display");
-      return { smallCaps: false, text: upper, size, cx, baseline };
+    const style = els.titleStyle.value; // 'regular' | 'smallcaps' | 'upper'
+    if (style !== "smallcaps") {
+      const display = style === "upper" ? text.toUpperCase() : text; // regular = as typed
+      const size = fitText(c, display, maxWidth, startSize, TITLE_WEIGHT, "Playfair Display");
+      return { smallCaps: false, text: display, size, cx, baseline };
     }
 
     const runs = Array.from(text).map((ch) => {
@@ -578,7 +579,7 @@
     const rerender = () => render();
     [els.title, els.description, els.metadata, els.waveColor, els.bgColor,
      els.textColor, els.aspect].forEach(el => el.addEventListener("input", rerender));
-    [els.paperTexture, els.frame, els.roundCaps, els.mirror, els.smallCaps].forEach(el =>
+    [els.paperTexture, els.frame, els.roundCaps, els.mirror, els.titleStyle].forEach(el =>
       el.addEventListener("change", rerender));
     els.aspect.addEventListener("change", () => { textureCache = { key: "", canvas: null }; render(); });
 
